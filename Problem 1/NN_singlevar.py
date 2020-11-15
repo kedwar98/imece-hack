@@ -18,7 +18,9 @@ from sklearn.model_selection import train_test_split
 import tensorflow_addons as tfa
 # if file is in same working directory as data, you can just use the file name
 
-machnum=1
+machnum=0
+targetselect=0
+
 data=pd.read_csv('machine'+str(machnum)+'df.csv', index_col=0)
 min_max_scaler = preprocessing.MinMaxScaler()
 x_scaled = min_max_scaler.fit_transform(data.values)
@@ -29,35 +31,41 @@ data = pd.DataFrame(x_scaled, columns=data.columns,index=data.index.values)
 
 xtarget=data[data.columns[1]]
 ytarget=data[data.columns[11]]
-target=pd.concat([xtarget,ytarget],axis=1)
+# target=pd.concat([xtarget,ytarget],axis=1)
+if targetselect==1:
+    target=ytarget
+else:
+    target=xtarget
 target=target*20
 #create features dataframe by dropping the target columns
 # features=data.drop(['Machines > Bridgeport Mill 1 > Spindle > Y-Radial > Damage Accumulation','Machines > Bridgeport Mill 1 > Spindle > X-Axial > Damage Accumulation'],axis=1)
 features=data.drop(data.columns[11],axis=1)
 features=features.drop(features.columns[1],axis=1)
 
-model = Sequential()
-model.add(k.layers.BatchNormalization())
-
-model.add(Dense(128, input_dim=11))
-model.add(k.layers.BatchNormalization())
-model.add(k.layers.Activation(tf.keras.activations.selu))
-# model.add(k.layers.Activation(tfa.layers.GELU()))
-# model.add(k.layers.Dropout(.1))
-
-model.add(Dense(256))
-model.add(k.layers.BatchNormalization())
-model.add(k.layers.Activation(tf.keras.activations.selu))
-# model.add(k.layers.Activation(tfa.layers.GELU()))
-# model.add(k.layers.Dropout(.1))
-
-model.add(Dense(128))
-model.add(k.layers.BatchNormalization())
-model.add(k.layers.Activation(tf.keras.activations.selu))
-# model.add(k.layers.Activation(tfa.layers.GELU()))
-# model.add(k.layers.Dropout(.1))
-
-model.add(Dense(2, activation='relu'))    
+def NN():
+    model = Sequential()
+    model.add(k.layers.BatchNormalization())
+    
+    model.add(Dense(128, input_dim=11))
+    model.add(k.layers.BatchNormalization())
+    model.add(k.layers.Activation(tf.keras.activations.selu))
+    # model.add(k.layers.Activation(tfa.layers.GELU()))
+    # model.add(k.layers.Dropout(.1))
+    
+    model.add(Dense(256))
+    model.add(k.layers.BatchNormalization())
+    model.add(k.layers.Activation(tf.keras.activations.selu))
+    # model.add(k.layers.Activation(tfa.layers.GELU()))
+    # model.add(k.layers.Dropout(.1))
+    
+    model.add(Dense(128))
+    model.add(k.layers.BatchNormalization())
+    model.add(k.layers.Activation(tf.keras.activations.selu))
+    # model.add(k.layers.Activation(tfa.layers.GELU()))
+    # model.add(k.layers.Dropout(.1))
+    
+    model.add(Dense(1, activation='relu'))    
+    return model
 
 #output predicted xdamage and ydamage, both stored in target
 
@@ -77,51 +85,51 @@ def r2_tf(y_true, y_pred):
 
 # history = model.fit(features, target, validation_split=0.2, epochs=100,verbose=0)
 
-batch_size=2500
-X_train, X_test, y_train, y_test = train_test_split(features, target, test_size=0.2, random_state=42)
 
-train_dataset=tf.data.Dataset.from_tensor_slices((X_train,y_train))
-train_dataset=train_dataset.shuffle(buffer_size=1024).batch(batch_size)
-val_dataset = tf.data.Dataset.from_tensor_slices((X_test, y_test))
-val_dataset = val_dataset.batch(batch_size)
-
-
-
-optimizer = tf.keras.optimizers.Adam(1e-4)
-
-trainloss=[]
-valloss=[]
-R21=[]
-R22=[]
-bestr2=[0,0]
-dropcount=0
-stoptraining=0
-epoch=0
 @tf.function
 def train_step():
     with tf.GradientTape() as tape:
         logits = model(x_batch_train, training=True)
-        loss_value =tf.keras.losses.MSE(y_batch_train,logits)
+        loss_value =tf.keras.losses.MSE(tf.expand_dims(y_batch_train,-1),logits)
     grads = tape.gradient(loss_value, model.trainable_weights)
     optimizer.apply_gradients(zip(grads, model.trainable_weights))
     return loss_value
 
-while epoch <1000 and stoptraining==0:
+
+batch_size=2500
+R2=[]
+bestr2=0
+
+
+X_train, X_test, y_train, y_test = train_test_split(features, target, test_size=0.2, random_state=42)
+train_dataset=tf.data.Dataset.from_tensor_slices((X_train,y_train))
+train_dataset=train_dataset.shuffle(buffer_size=1024).batch(batch_size)
+val_dataset = tf.data.Dataset.from_tensor_slices((X_test, y_test))
+val_dataset = val_dataset.batch(batch_size)
+optimizer = tf.keras.optimizers.Adam(1e-4)
+
+trainloss=[]
+valloss=[]
+dropcount=0
+stoptraining=0
+epoch=0
+
+
+model=NN()
+while epoch <2500 and stoptraining==0:
     for step, (x_batch_train, y_batch_train) in enumerate(train_dataset):
         trainloss.append(np.mean(train_step()))
-
-          
     for x_batch_val, y_batch_val in val_dataset:
         val_logits = model(x_batch_val, training=False)
-        val_loss=tf.keras.losses.MSE(y_batch_val,val_logits)
-        R2val=r2_tf(y_batch_val,tf.cast(val_logits,tf.float64)).numpy()
-        R21.append(R2val[0])
-        R22.append(R2val[1])
-        print(R2val)
-        if (R2val[0]+R2val[1]>bestr2[0]+bestr2[1]):
+        val_loss=tf.keras.losses.MSE(tf.expand_dims(y_batch_val,-1),val_logits)
+        R2val=r2_tf(tf.expand_dims(y_batch_val,-1),tf.cast(val_logits,tf.float64)).numpy()
+        
+        # print(R2val)
+        R2.append(R2val)
+        if (R2val>bestr2):
             bestr2=R2val
             dropcount=0
-        elif R2val[1]>0 and R2val[0]>0:
+        elif R2val>0:
             dropcount+=1
         if dropcount==20:
             stoptraining=1
@@ -138,7 +146,7 @@ while epoch <1000 and stoptraining==0:
 
 
 
-model.summary()
+# model.summary()
 
 #print("model.fit outputs: ",history)
 #print("NN Average RMSE: ",np.average(history.history['loss']))
@@ -160,8 +168,7 @@ model.summary()
 
 plt.plot(valloss[10:],label= 'Test loss')
 plt.plot(trainloss[10:],label= 'Train loss')
-plt.plot(R21[10:],label= 'R21')
-plt.plot(R22[10:],label= 'R22')
+plt.plot(R2[10:],label= 'R2')
 plt.legend()
 plt.title("Training for Machine #:"+str(machnum) +"with best r2: " + str(bestr2))
 plt.show()
