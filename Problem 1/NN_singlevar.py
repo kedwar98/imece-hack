@@ -18,8 +18,8 @@ from sklearn.model_selection import train_test_split
 import tensorflow_addons as tfa
 # if file is in same working directory as data, you can just use the file name
 
-machnum=0
-targetselect=0
+machnum=4
+targetselect=1
 
 data=pd.read_csv('machine'+str(machnum)+'df.csv', index_col=0)
 min_max_scaler = preprocessing.MinMaxScaler()
@@ -28,19 +28,22 @@ data = pd.DataFrame(x_scaled, columns=data.columns,index=data.index.values)
 #we have two target values, damage in x and y 
 # xtarget=data['Machines > Bridgeport Mill 1 > Spindle > X-Axial > Damage Accumulation']
 # ytarget=data['Machines > Bridgeport Mill 1 > Spindle > Y-Radial > Damage Accumulation']
-
-xtarget=data[data.columns[1]]
-ytarget=data[data.columns[11]]
+damage1arr=[2,2,2,2,2]
+damage2arr=[8,8,8,8,8]
+damage2=damage2arr[machnum]
+damage1=damage1arr[machnum]
+xtarget=data[data.columns[damage1]]
+ytarget=data[data.columns[damage2]]
 # target=pd.concat([xtarget,ytarget],axis=1)
 if targetselect==1:
     target=ytarget
 else:
     target=xtarget
-target=target*20
+target=target*5
 #create features dataframe by dropping the target columns
 # features=data.drop(['Machines > Bridgeport Mill 1 > Spindle > Y-Radial > Damage Accumulation','Machines > Bridgeport Mill 1 > Spindle > X-Axial > Damage Accumulation'],axis=1)
-features=data.drop(data.columns[11],axis=1)
-features=features.drop(features.columns[1],axis=1)
+features=data.drop(data.columns[damage2],axis=1)
+features=features.drop(features.columns[damage1],axis=1)
 
 def NN():
     model = Sequential()
@@ -116,7 +119,7 @@ epoch=0
 
 
 model=NN()
-while epoch <2500 and stoptraining==0:
+while epoch<5000 and stoptraining==0:
     for step, (x_batch_train, y_batch_train) in enumerate(train_dataset):
         trainloss.append(np.mean(train_step()))
     for x_batch_val, y_batch_val in val_dataset:
@@ -129,16 +132,16 @@ while epoch <2500 and stoptraining==0:
         if (R2val>bestr2):
             bestr2=R2val
             dropcount=0
-        elif R2val>0:
+        elif R2val>0 and epoch>800:
             dropcount+=1
-        if dropcount==20:
+        if dropcount==30:
             stoptraining=1
         valloss.append(np.mean(val_loss))
         if step % 200 == 0:
             print(
-                "Training loss at step %d: %.4f" % (step, float(trainloss[-1]))
+                "Training loss at step %d: %.4f" % (epoch, float(trainloss[-1]))
             )
-            print("Val loss at step %d: %.4f" % (step, float(valloss[-1])))
+            print("Val loss at step %d: %.4f" % (epoch, float(valloss[-1])))
     epoch+=1
 
 
