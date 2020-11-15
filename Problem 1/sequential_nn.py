@@ -41,11 +41,13 @@ model.compile(optimizer='adam',loss=tf.keras.losses.MeanSquaredError()) #I think
 
 history = model.fit(features, target, validation_split=0.2, epochs=1000,verbose=0)
 
+
 model.summary()
 
 #print("model.fit outputs: ",history)
-print("NN Average RMSE: ",np.average(history.history['loss']))
+#print("NN Average RMSE: ",np.average(history.history['loss']))
 
+print("NN Average RMSE over last 50 points: ",np.average(history.history['val_loss'][-50:]))
 
 
 
@@ -54,13 +56,14 @@ print("NN Average RMSE: ",np.average(history.history['loss']))
 
 evaltest = model.evaluate(features,target,batch_size=1)
 #print('Accuracy: %.2f' % (accuracy*100))
-print(evaltest)
+#print(evaltest)
 
 
 
 #Plot loss over epochs
 
-plt.plot(history.history['loss'])
+plt.plot(history.history['val_loss'],label= 'Test loss')
+plt.plot(history.history['loss'],label= 'Train loss')
 plt.show()
 
 
