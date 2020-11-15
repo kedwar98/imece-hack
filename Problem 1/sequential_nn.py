@@ -14,20 +14,22 @@ from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense
 
 # if file is in same working directory as data, you can just use the file name
-data=pd.read_csv(<file_name>, index_col=0)
+data=pd.read_csv('resdf.csv', index_col=0)
 
 #we have two target values, damage in x and y 
-xtarget=data.dataframe['Machines > Bridgeport Mill 1 > Spindle > X-Axial > Damage Accumulation']
-ytarget=data.dataframe['Machines > Bridgeport Mill 1 > Spindle > Y-Radial > Damage Accumulation']
+xtarget=data['Machines > Bridgeport Mill 1 > Spindle > X-Axial > Damage Accumulation']
+ytarget=data['Machines > Bridgeport Mill 1 > Spindle > Y-Radial > Damage Accumulation']
 
-target=pd.concat[xtarget,ytarget]
+target=pd.concat([xtarget,ytarget],axis=1)
 
 #create features dataframe by dropping the target columns
-features=data.dataframe.drop['Machines > Bridgeport Mill 1 > Spindle > Y-Radial > Damage Accumulation','Machines > Bridgeport Mill 1 > Spindle > X-Axial > Damage Accumulation',axis=1]
+features=data.drop(['Machines > Bridgeport Mill 1 > Spindle > Y-Radial > Damage Accumulation','Machines > Bridgeport Mill 1 > Spindle > X-Axial > Damage Accumulation'],axis=1)
 
 model = Sequential()
-model.add(Dense(32, input_dim=11, activation='relu'))     #CHANGE INPUT_DIM to number of features
-model.add(Dense(64, activation='relu'))
+model.add(Dense(100, input_dim=11, activation='relu'))     #CHANGE INPUT_DIM to number of features
+# dense layers are fully connected layers, dense(32) means 32 outputs
+model.add(Dense(100, activation='relu'))
+model.add(Dense(100, activation='relu'))
 model.add(Dense(2))   #output predicted xdamage and ydamage, both stored in target
 
 #Adam optimizer is used for preliminary results. Other optimizers may be more stable/robust, perhaps less efficient
@@ -37,9 +39,11 @@ model.compile(optimizer='adam',loss=tf.keras.losses.MeanSquaredError()) #I think
 #Adjust number of epochs (iterations over set), validation split, other arguments, and verbosity
 #Change input as needed
 
-history = model.fit(features, target, validation_split=0.2, epochs=200,verbose=0)
+history = model.fit(features, target, validation_split=0.2, epochs=1000,verbose=0)
 
-print("model.fit outputs: ",history)
+model.summary()
+
+#print("model.fit outputs: ",history)
 print("NN Average RMSE: ",np.average(history.history['loss']))
 
 
