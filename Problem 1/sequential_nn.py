@@ -28,11 +28,11 @@ target=pd.concat([xtarget,ytarget],axis=1)
 #create features dataframe by dropping the target columns
 features=data.drop(['Machines > Bridgeport Mill 1 > Spindle > Y-Radial > Damage Accumulation','Machines > Bridgeport Mill 1 > Spindle > X-Axial > Damage Accumulation'],axis=1)
 model = Sequential()
-model.add(BatchNormalization())
-model.add(Dense(128, input_dim=11, activation='relu'))     #CHANGE INPUT_DIM to number of features
+model.add(k.layers.BatchNormalization())
+model.add(Dense(128, input_dim=11, activation='selu'))     #CHANGE INPUT_DIM to number of features
 # dense layers are fully connected layers, dense(32) means 32 outputs
-model.add(Dense(256, activation='relu'))
-model.add(Dense(128, activation='relu'))
+model.add(Dense(256, activation='selu'))
+model.add(Dense(128, activation='selu'))
 model.add(Dense(2))   #output predicted xdamage and ydamage, both stored in target
 
 #Adam optimizer is used for preliminary results. Other optimizers may be more stable/robust, perhaps less efficient
